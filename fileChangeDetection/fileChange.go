@@ -1,12 +1,18 @@
 package main
 
 import (
-	"github.com/fsnotify/fsnotify"
 	"log"
 	"path/filepath"
+
+	"github.com/fsnotify/fsnotify"
 )
 
-func articleFile(notifyChan chan string) {
+type Result struct {
+	fileName    string
+	fileChangeB bool
+}
+
+func fileChange(notifyChan chan string) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
@@ -17,11 +23,8 @@ func articleFile(notifyChan chan string) {
 		for {
 			select {
 			case event := <-watcher.Events:
-				if event.Op&(fsnotify.Rename) != 0 {
-					fileName := filepath.Base(event.Name)
-					// fmt.Printf("The event was %s and of type %T\n", event, event)
-					notifyChan <- fileName
-				}
+				fileName := filepath.Base(event.Name)
+				notifyChan <- fileName
 			case err := <-watcher.Errors:
 				log.Println("Error:", err)
 			}
