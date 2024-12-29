@@ -1,4 +1,4 @@
-package main
+package filechangedetection
 
 import (
 	"log"
@@ -7,12 +7,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-type Result struct {
-	fileName    string
-	fileChangeB bool
-}
-
-func fileChange(notifyChan chan string) {
+func FileChange(notifyChan chan string, dirPath string) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
@@ -23,15 +18,16 @@ func fileChange(notifyChan chan string) {
 		for {
 			select {
 			case event := <-watcher.Events:
-				fileName := filepath.Base(event.Name)
-				notifyChan <- fileName
+				if event.Op&(fsnotify.Rename) != 0 {
+					fileName := filepath.Base(event.Name)
+					notifyChan <- fileName
+				}
 			case err := <-watcher.Errors:
 				log.Println("Error:", err)
 			}
 		}
 	}()
 
-	dirPath := "./"
 	err = watcher.Add(dirPath)
 	if err != nil {
 		log.Fatal(err)

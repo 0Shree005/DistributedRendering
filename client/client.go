@@ -2,11 +2,13 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"net"
 	"os"
 	"strings"
 
+	"github.com/0Shree005/DistributedRendering/fileChangeDetection"
 	"github.com/joho/godotenv"
 )
 
@@ -15,6 +17,13 @@ const (
 )
 
 func main() {
+	fileDir := flag.String("fileDir", "", "The main directory where the file is saved")
+	flag.Parse()
+
+	go func() {
+		filechangedetection.GetFileChange(*fileDir)
+	}()
+
 	err := godotenv.Load()
 	if err != nil {
 		panic("ERROR loading .env file")
@@ -29,6 +38,7 @@ func main() {
 	connection, err := net.Dial(network, host+":"+port)
 	chkNilError(err)
 
+	fmt.Println("Connected to server")
 	for {
 		reader := bufio.NewReader(os.Stdin)
 		input, err := reader.ReadString('\n')

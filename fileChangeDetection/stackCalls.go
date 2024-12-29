@@ -1,4 +1,6 @@
-package main
+package filechangedetection
+
+// package main
 
 import (
 	"sync"
