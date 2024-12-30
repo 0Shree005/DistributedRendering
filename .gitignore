@@ -1,4 +1,4 @@
-*.blend
+*.blend*
 .env
 *.env.backup
 *.log

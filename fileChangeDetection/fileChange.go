@@ -1,13 +1,16 @@
 package filechangedetection
 
 import (
+	"context"
+	"fmt"
 	"log"
 	"path/filepath"
+	"sync"
 
 	"github.com/fsnotify/fsnotify"
 )
 
-func FileChange(notifyChan chan string, dirPath string) {
+func FileChange(wg *sync.WaitGroup, ctx context.Context, notifyChan chan string, dirPath string) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
@@ -17,6 +20,9 @@ func FileChange(notifyChan chan string, dirPath string) {
 	go func() {
 		for {
 			select {
+			case <-ctx.Done():
+				fmt.Println("Exiting fileChange")
+				return
 			case event := <-watcher.Events:
 				if event.Op&(fsnotify.Rename) != 0 {
 					fileName := filepath.Base(event.Name)
@@ -33,5 +39,6 @@ func FileChange(notifyChan chan string, dirPath string) {
 		log.Fatal(err)
 	}
 
-	select {}
+	<-ctx.Done()
+	// select {}
 }

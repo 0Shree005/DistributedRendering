@@ -1,6 +1,7 @@
 package filechangedetection
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -8,19 +9,35 @@ import (
 
 var mutex sync.Mutex
 
-func Middle(resultChan chan string, dirPath string) {
+func Middle(wg *sync.WaitGroup, ctx context.Context, resultChan chan string, notifyChan chan string, dirPath string) {
+	defer wg.Done()
+
 	var stack Stack
 	ticker := time.NewTicker(1 * time.Second)
 	initStackIticker := time.NewTicker(20 * time.Second)
-	notifyChan := make(chan string)
 
 	initStack(&stack) // initialising stack for the FIRST 20 seconds as well
 
+	wg.Add(2)
 	go func() {
+		defer wg.Done()
+		FileChange(wg, ctx, notifyChan, dirPath)
+	}()
+
+	go func() {
+		defer close(notifyChan)
 		for {
-			go FileChange(notifyChan, dirPath)
-			for fileNameRes := range notifyChan {
+			select {
+			case fileNameRes, ok := <-notifyChan:
+				if !ok {
+					fmt.Println("notifyChan closed, exiting middle")
+					return
+				}
 				shouldItGoToMain(&stack, resultChan, fileNameRes)
+			case <-ctx.Done():
+				fmt.Println("Exiting Middle")
+				// close(resultChan)
+				return
 			}
 		}
 	}()
@@ -32,6 +49,9 @@ func Middle(resultChan chan string, dirPath string) {
 				fmt.Println("Tick")
 			case <-initStackIticker.C:
 				initStack(&stack)
+			case <-ctx.Done():
+				fmt.Println("Exiting Middle")
+				return
 			}
 		}
 	}()
