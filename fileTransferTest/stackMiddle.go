@@ -1,4 +1,6 @@
-package filechangedetection
+// package filechangedetection
+
+package main
 
 import (
 	"context"
@@ -9,34 +11,33 @@ import (
 
 var mutex sync.Mutex
 
-func Middle(wg *sync.WaitGroup, ctx context.Context, resultChan chan string, notifyChan chan string, dirPath string) {
+func Middle(wg *sync.WaitGroup, ctx context.Context, resultChan chan Result, notifyChan chan Result, dirPath string) {
 	defer wg.Done()
 
 	var stack Stack
 	ticker := time.NewTicker(1 * time.Second)
 	initStackIticker := time.NewTicker(20 * time.Second)
 
-	initStack(&stack)
+	initStack(&stack) // initialising stack for the FIRST 20 seconds as well
 
-	wg.Add(2)
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		FileChange(wg, ctx, notifyChan, dirPath)
+		fileChange(notifyChan)
 	}()
 
 	go func() {
-		defer close(notifyChan)
+		defer close(resultChan)
 		for {
 			select {
 			case fileNameRes, ok := <-notifyChan:
 				if !ok {
-					fmt.Println("notifyChan closed, exiting middle")
+					fmt.Println("resultChan closed, exiting middle")
 					return
 				}
 				shouldItGoToMain(&stack, resultChan, fileNameRes)
 			case <-ctx.Done():
 				fmt.Println("Exiting Middle")
-				// close(resultChan)
 				return
 			}
 		}
@@ -64,7 +65,7 @@ func initStack(stack1 *Stack) {
 	// fmt.Println("Last item: ", stack1.Peek())
 }
 
-func shouldItGoToMain(stack *Stack, resultChan chan string, fileName string) {
+func shouldItGoToMain(stack *Stack, resultChan chan Result, fileName Result) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -73,6 +74,7 @@ func shouldItGoToMain(stack *Stack, resultChan chan string, fileName string) {
 		if peekedItem == false {
 			stack.Push(true)
 			resultChan <- fileName
+			fmt.Printf("Sent to client.go: %+v\n", fileName)
 		}
 	}
 }

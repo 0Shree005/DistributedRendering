@@ -5,25 +5,28 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	// "log"
 	"net"
-	// "net/http"
 	_ "net/http/pprof"
 	"os"
 	"runtime"
-
-	// "strings"
 	"sync"
 
 	"github.com/0Shree005/DistributedRendering/fileChangeDetection"
 	"github.com/joho/godotenv"
 )
 
+type fileNameResult struct {
+	fileName       string
+	fileChangeBool bool
+}
+
 const (
 	network = "tcp"
 )
 
 func main() {
+	sendListener := make(chan bool)
+	var fileRes fileNameResult
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -52,7 +55,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		filechangedetection.GetFileChange(&wg, ctx, *fileDir, connection)
+		fileName, ok := filechangedetection.GetFileChange(fileRes, sendListener, &wg, ctx, *fileDir, connection)
 	}()
 
 	go func() {
@@ -95,9 +98,3 @@ func printMemStats() {
 func bToMb(b uint64) uint64 {
 	return b / 1000 / 1000
 }
-
-// func init() {
-// 	go func() {
-// 		log.Println(http.ListenAndServe("localhost:6060", nil))
-// 	}()
-// }

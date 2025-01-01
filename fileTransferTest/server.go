@@ -1,25 +1,25 @@
 package main
 
 import (
-	"flag"
+	"encoding/json"
 	"fmt"
-	// "io"
-	// "log"
+	"io"
 	"net"
 	"os"
 
-	// "github.com/0Shree005/DistributedRendering/fileTransfer"
 	"github.com/joho/godotenv"
 )
+
+type Result struct {
+	FileName    string `json:"file_name"`
+	FileChangeB bool   `json:"file_change_b"`
+}
 
 const (
 	network = "tcp"
 )
 
 func main() {
-	// fileName := flag.String("fileName", "", "This file is the current working file from the client")
-	flag.Parse()
-
 	err := godotenv.Load()
 	if err != nil {
 		panic("ERROR loading .env file")
@@ -50,8 +50,32 @@ func main() {
 		}
 
 		fmt.Println("Client connected:", client.RemoteAddr())
+		go handleClient(client)
 	}
 
+}
+
+func handleClient(client net.Conn) {
+
+	decoder := json.NewDecoder(client)
+
+	for {
+		var result Result
+		err := decoder.Decode(&result)
+		if err != nil {
+			if err == io.EOF {
+				fmt.Println("Client disconnected")
+				return
+			}
+			fmt.Println("Error decoding JSON metadata")
+			return
+		}
+		fmt.Printf("FileChanged: %s, change status: %t\n", result.FileName, result.FileChangeB)
+
+		if result.FileChangeB {
+			go ReceiveFile(result, client)
+		}
+	}
 }
 
 func chkNilErr(err error) {

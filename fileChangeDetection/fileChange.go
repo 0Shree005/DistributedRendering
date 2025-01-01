@@ -5,17 +5,21 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"regexp"
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
 )
 
 func FileChange(wg *sync.WaitGroup, ctx context.Context, notifyChan chan string, dirPath string) {
+
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer watcher.Close()
+
+	validFileName := regexp.MustCompile(`^[\w\-\.]+\.blend$`)
 
 	go func() {
 		for {
@@ -25,8 +29,11 @@ func FileChange(wg *sync.WaitGroup, ctx context.Context, notifyChan chan string,
 				return
 			case event := <-watcher.Events:
 				if event.Op&(fsnotify.Rename) != 0 {
-					fileName := filepath.Base(event.Name)
-					notifyChan <- fileName
+					fileRes.fileName = filepath.Base(event.Name)
+					fileRes.fileChangeBool = true
+					if validFileName.MatchString(fileRes.fileName) {
+						notifyChan <- fileRes
+					}
 				}
 			case err := <-watcher.Errors:
 				log.Println("Error:", err)

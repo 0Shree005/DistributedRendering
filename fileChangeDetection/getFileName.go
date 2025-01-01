@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"net"
 	"sync"
-
-	"github.com/0Shree005/DistributedRendering/fileTransfer"
 )
 
-func GetFileChange(wg *sync.WaitGroup, ctx context.Context, fileDir string, connection net.Conn) {
+func GetFileChange(sendListener chan bool, wg *sync.WaitGroup, ctx context.Context, fileDir string, connection net.Conn) {
 	defer wg.Done()
 
 	resultChan := make(chan string)
@@ -29,7 +27,7 @@ func GetFileChange(wg *sync.WaitGroup, ctx context.Context, fileDir string, conn
 				return
 			}
 			fmt.Printf("FROM MAIN %s file was changed\n", fileNameRes)
-			fileTransfer.SendFile(fileNameRes, fileDir, connection)
+			mainChan <- fileNameRes
 		case <-ctx.Done():
 			fmt.Println("Exiting GetFileChange()")
 			close(resultChan)
