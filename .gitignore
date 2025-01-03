@@ -1,5 +1,4 @@
-# commenting .blend until i test the fileChange detection
-# *.blend
+*.blend*
 .env
 *.env.backup
 *.log

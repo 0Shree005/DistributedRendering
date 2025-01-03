@@ -3,83 +3,32 @@ package main
 import (
 	"fmt"
 	"io"
-	"net"
+	"net/http"
 	"os"
-
-	"github.com/joho/godotenv"
-)
-
-const (
-	network = "tcp"
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		panic("ERROR loading .env file")
-	}
-
-	var allowedIP string = os.Getenv("ALLOWED_IP")
-	var port string = os.Getenv("SERVER_PORT")
-
-	fmt.Println("TCP server in GO SERVER")
-
-	fmt.Println("Listening on port:", port)
-	connection, err := net.Listen(network, ":"+port)
-	chkNilErr(err)
-	defer connection.Close()
-
-	for {
-		fmt.Println("Waiting for a connection...")
-		client, err := connection.Accept()
-		chkNilErr(err)
-
-		clientIP, _, err := net.SplitHostPort(client.RemoteAddr().String())
-		chkNilErr(err)
-
-		if clientIP != allowedIP {
-			fmt.Printf("Connection from %s rejected.\n", clientIP)
-			client.Close()
-			continue
-		}
-
-		fmt.Println("Client connected:", client.RemoteAddr())
-		go handleClient(client)
-
-	}
-
+	fmt.Println("Waiting for files...")
+	http.HandleFunc("/upload", uploadHandler)
+	http.ListenAndServe(":8080", nil)
 }
 
-func handleClient(client io.Reader) {
-	for {
-		buff, beof := readBuffer(client)
-		if beof {
-			fmt.Println("client disconnected...")
-			break
-		} else {
-			fmt.Printf("Message received: %s\n", string(buff))
-		}
-	}
-}
-
-func readBuffer(reader io.Reader) ([]byte, bool) {
-	b := make([]byte, 1024)
-	bn, err := reader.Read(b)
-
+func uploadHandler(w http.ResponseWriter, r *http.Request) {
+	file, header, err := r.FormFile("file")
 	if err != nil {
-		if err == io.EOF {
-			return nil, true
-		} else {
-			panic(err)
-		}
+		http.Error(w, "Failed to read file", http.StatusBadRequest)
+		return
 	}
+	defer file.Close()
 
-	return b[:bn], false
-}
-
-func chkNilErr(err error) {
+	outFile, err := os.Create("./uploads/" + header.Filename)
 	if err != nil {
-		fmt.Println(err)
-		panic(err)
+		http.Error(w, "Failed to save file", http.StatusInternalServerError)
+		return
 	}
+	defer outFile.Close()
+
+	io.Copy(outFile, file)
+	fmt.Printf("File %v received successfully!", outFile)
+	w.Write([]byte("File uploaded successfully!"))
 }

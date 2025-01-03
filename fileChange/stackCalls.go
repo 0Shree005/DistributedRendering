@@ -1,4 +1,6 @@
-package main
+package filechange
+
+// package main
 
 import (
 	"sync"
