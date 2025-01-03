@@ -1,4 +1,4 @@
-package filechangedetection
+package filechange
 
 // package main
 

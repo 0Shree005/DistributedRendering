@@ -5,58 +5,24 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"net"
-	_ "net/http/pprof"
 	"os"
 	"runtime"
 	"sync"
 
-	"github.com/0Shree005/DistributedRendering/fileChangeDetection"
-	"github.com/joho/godotenv"
-)
-
-type fileNameResult struct {
-	fileName       string
-	fileChangeBool bool
-}
-
-const (
-	network = "tcp"
+	filechange "github.com/0Shree005/DistributedRendering/fileChange"
 )
 
 func main() {
-	sendListener := make(chan bool)
-	var fileRes fileNameResult
+	fmt.Println("Main was called")
+
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(context.Background())
 
-	fileDir := flag.String("fileDir", "", "The main directory where the file is saved")
+	dirPath := flag.String("dirPath", "", "The main directory where the file is saved")
 	flag.Parse()
 
-	fmt.Println("FileDIR is :", *fileDir)
-
-	err := godotenv.Load()
-	if err != nil {
-		panic("ERROR loading .env file")
-	}
-
-	var host string = os.Getenv("SERVER_IP")
-	var port string = os.Getenv("SERVER_PORT")
-
-	fmt.Println("host: ", host)
-	fmt.Println("port: ", port)
-
-	connection, err := net.Dial(network, host+":"+port)
-	chkNilError(err)
-
-	fmt.Println("connection: ", connection)
-	fmt.Println("Connected to server")
-
 	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		fileName, ok := filechangedetection.GetFileChange(fileRes, sendListener, &wg, ctx, *fileDir, connection)
-	}()
+	go filechange.Middle(&wg, ctx, *dirPath)
 
 	go func() {
 		reader := bufio.NewReader(os.Stdin)
@@ -70,19 +36,13 @@ func main() {
 			}
 		}
 	}()
+
 	printMemStats()
 	fmt.Printf("Before wait(), ACTIVE routines are: %d\n", runtime.NumGoroutine())
 	wg.Wait()
 	fmt.Printf("After wait(), ACTIVE routines are: %d\n", runtime.NumGoroutine())
 	printMemStats()
 	fmt.Println("All routines stopped. Exiting Program")
-}
-
-func chkNilError(err error) {
-	if err != nil {
-		fmt.Println(err)
-		panic(err)
-	}
 }
 
 func printMemStats() {

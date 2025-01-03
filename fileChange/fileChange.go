@@ -1,4 +1,6 @@
-package filechangedetection
+package filechange
+
+// package main
 
 import (
 	"context"
@@ -11,15 +13,14 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-func FileChange(wg *sync.WaitGroup, ctx context.Context, notifyChan chan string, dirPath string) {
-
+func FileChange(wg *sync.WaitGroup, ctx context.Context, fileNameChan chan string, dirPath string) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer watcher.Close()
 
-	validFileName := regexp.MustCompile(`^[\w\-\.]+\.blend$`)
+	validFileName := regexp.MustCompile(`^[\w\-\.]+\.blend$`) // WITHOUT the ./ as the prefix
 
 	go func() {
 		for {
@@ -29,10 +30,9 @@ func FileChange(wg *sync.WaitGroup, ctx context.Context, notifyChan chan string,
 				return
 			case event := <-watcher.Events:
 				if event.Op&(fsnotify.Rename) != 0 {
-					fileRes.fileName = filepath.Base(event.Name)
-					fileRes.fileChangeBool = true
-					if validFileName.MatchString(fileRes.fileName) {
-						notifyChan <- fileRes
+					fileName := filepath.Base(event.Name)
+					if validFileName.MatchString(fileName) {
+						fileNameChan <- fileName
 					}
 				}
 			case err := <-watcher.Errors:
@@ -47,5 +47,4 @@ func FileChange(wg *sync.WaitGroup, ctx context.Context, notifyChan chan string,
 	}
 
 	<-ctx.Done()
-	// select {}
 }

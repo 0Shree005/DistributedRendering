@@ -1,14 +1,14 @@
 #!/bin/bash
 
 echo -n "Enter the save directory: "
-read fileDir
+read dirPath
 
-fileDir=$(eval echo "$fileDir")
+dirPath=$(eval echo "$dirPath")
 
-if [ ! -d "$fileDir" ]; then
-    echo "Directory does not exist: $fileDir"
+if [ ! -d "$dirPath" ]; then
+    echo "Directory does not exist: $dirPath"
     exit 1
 fi
 
 nohup blender > /dev/null 2>&1 &
-go run ~/code/DistributedRendering/client/client.go -fileDir="$fileDir"
+go run ~/code/DistributedRendering/main.go -dirPath="$dirPath"

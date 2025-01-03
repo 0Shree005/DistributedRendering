@@ -1,15 +1,20 @@
-package filechangedetection
+package filechange
+
+// package main
 
 import (
 	"context"
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/0Shree005/DistributedRendering/fileTransfer"
 )
 
 var mutex sync.Mutex
 
-func Middle(wg *sync.WaitGroup, ctx context.Context, resultChan chan string, notifyChan chan string, dirPath string) {
+func Middle(wg *sync.WaitGroup, ctx context.Context, dirPath string) {
+	notifyChan := make(chan string)
 	defer wg.Done()
 
 	var stack Stack
@@ -18,7 +23,7 @@ func Middle(wg *sync.WaitGroup, ctx context.Context, resultChan chan string, not
 
 	initStack(&stack)
 
-	wg.Add(2)
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		FileChange(wg, ctx, notifyChan, dirPath)
@@ -33,10 +38,9 @@ func Middle(wg *sync.WaitGroup, ctx context.Context, resultChan chan string, not
 					fmt.Println("notifyChan closed, exiting middle")
 					return
 				}
-				shouldItGoToMain(&stack, resultChan, fileNameRes)
+				shouldItGoToServer(&stack, fileNameRes)
 			case <-ctx.Done():
 				fmt.Println("Exiting Middle")
-				// close(resultChan)
 				return
 			}
 		}
@@ -61,18 +65,15 @@ func initStack(stack1 *Stack) {
 	stack1.Reset()
 	stack1.Push(false)
 	fmt.Println("Stack was initialised")
-	// fmt.Println("Last item: ", stack1.Peek())
 }
 
-func shouldItGoToMain(stack *Stack, resultChan chan string, fileName string) {
+func shouldItGoToServer(stack *Stack, fileName string) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	if !stack.IsEmpty() {
-		peekedItem := stack.Peek()
-		if peekedItem == false {
-			stack.Push(true)
-			resultChan <- fileName
-		}
+	peekedItem := stack.Peek()
+	if peekedItem == false {
+		stack.Push(true)
+		filetransfer.SendFile(fileName)
 	}
 }
