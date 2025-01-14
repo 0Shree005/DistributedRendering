@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/0Shree005/DistributedRendering/fileTransfer"
+	"github.com/0Shree005/DistributedRendering/client/fileTransfer"
 )
 
 var mutex sync.Mutex

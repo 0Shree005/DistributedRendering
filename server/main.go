@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 )
 
 func main() {
@@ -29,6 +30,14 @@ func uploadHandler(w http.ResponseWriter, r *http.Request) {
 	defer outFile.Close()
 
 	io.Copy(outFile, file)
-	fmt.Printf("File %v received successfully!", outFile)
-	w.Write([]byte("File uploaded successfully!"))
+	validFileName := regexp.MustCompile(`^[\w\-\.]+\.blend$`)
+
+	if validFileName.MatchString(header.Filename) {
+		fmt.Printf("File %s received successfully!\n", header.Filename)
+		w.Write([]byte("File successfully reached the server!\n"))
+		go startRendering(header.Filename)
+	} else {
+		fmt.Printf("Invalid file name: %s\n", header.Filename)
+		w.Write([]byte("Invalid file format.\n"))
+	}
 }
