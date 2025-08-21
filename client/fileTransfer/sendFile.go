@@ -2,6 +2,7 @@ package filetransfer
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"mime/multipart"
@@ -13,15 +14,16 @@ import (
 )
 
 const (
-	maxRetries = 5
-	retryDelay = time.Millisecond * 100
+	maxRetries    = 5
+	retryDelay    = time.Millisecond * 100
+	statusPollInt = 5 * time.Second
 )
 
 func SendFile(fileName string) {
 	var file *os.File
 	var err error
 
-	for i := 0; i < maxRetries; i++ {
+	for range maxRetries {
 		file, err = os.Open(fileName)
 		if err == nil {
 			break
@@ -38,9 +40,16 @@ func SendFile(fileName string) {
 	defer file.Close()
 
 	err = godotenv.Load()
+	if err != nil {
+		log.Println("Warning: failed to load .env:", err)
+	}
 
 	var server string = os.Getenv("SERVER_IP")
+	if server == "" {
+		log.Fatalln("SERVER_IP not set in .env")
+	}
 
+	// --- File Upload ---
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	part, err := writer.CreateFormFile("file", fileName)
@@ -51,7 +60,6 @@ func SendFile(fileName string) {
 	if err != nil {
 		panic(err)
 	}
-
 	writer.Close()
 
 	resp, err := http.Post(server+"/upload", writer.FormDataContentType(), body)
@@ -60,5 +68,34 @@ func SendFile(fileName string) {
 	}
 	defer resp.Body.Close()
 
-	io.Copy(os.Stdout, resp.Body)
+	uploadResp, _ := io.ReadAll(resp.Body)
+	fmt.Println(string(uploadResp))
+
+	// --- Polling status ---
+	for {
+		time.Sleep(statusPollInt)
+		statusResp, err := http.Get(fmt.Sprintf("%s/status?file=%s", server, fileName))
+		if err != nil {
+			log.Println("Error getting status:", err)
+			continue
+		}
+		statusBody, _ := io.ReadAll(statusResp.Body)
+		statusResp.Body.Close()
+
+		status := string(statusBody)
+		fmt.Println("Server status:", status)
+
+		if contains(status, "done") {
+			fmt.Println("✅ Rendering completed!")
+			break
+		}
+		if contains(status, "failed") {
+			fmt.Println("❌ Rendering failed!")
+			break
+		}
+	}
+}
+
+func contains(s, substr string) bool {
+	return bytes.Contains([]byte(s), []byte(substr))
 }
