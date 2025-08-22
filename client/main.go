@@ -1,28 +1,24 @@
-package main
+package client
 
 import (
 	"bufio"
 	"context"
-	"flag"
 	"fmt"
 	"os"
 	"runtime"
 	"sync"
 
-	filechange "github.com/0Shree005/DistributedRendering/fileChange"
+	"github.com/0Shree005/DistributedRendering/client/fileChange"
 )
 
-func main() {
+func Client(dirPath string) {
 	fmt.Println("Main was called")
 
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(context.Background())
-
-	dirPath := flag.String("dirPath", "", "The main directory where the file is saved")
-	flag.Parse()
-
 	wg.Add(1)
-	go filechange.Middle(&wg, ctx, *dirPath)
+
+	go filechange.Middle(&wg, ctx, dirPath)
 
 	go func() {
 		reader := bufio.NewReader(os.Stdin)
