@@ -19,12 +19,13 @@ const (
 	statusPollInt = 5 * time.Second
 )
 
-func SendFile(fileName string) {
+func SendFile(fileName string, dirPath string) {
 	var file *os.File
 	var err error
 
 	for range maxRetries {
-		file, err = os.Open(fileName)
+		fmt.Println("Final file name WITH entire dirPath", dirPath+"/"+fileName)
+		file, err = os.Open(dirPath + "/" + fileName)
 		if err == nil {
 			break
 		}

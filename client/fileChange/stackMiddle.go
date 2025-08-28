@@ -38,7 +38,7 @@ func Middle(wg *sync.WaitGroup, ctx context.Context, dirPath string) {
 					fmt.Println("notifyChan closed, exiting middle")
 					return
 				}
-				shouldItGoToServer(&stack, fileNameRes)
+				shouldItGoToServer(&stack, fileNameRes, dirPath)
 			case <-ctx.Done():
 				fmt.Println("Exiting Middle")
 				return
@@ -67,13 +67,13 @@ func initStack(stack1 *Stack) {
 	fmt.Println("Stack was initialised")
 }
 
-func shouldItGoToServer(stack *Stack, fileName string) {
+func shouldItGoToServer(stack *Stack, fileName string, dirPath string) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
 	peekedItem := stack.Peek()
 	if peekedItem == false {
 		stack.Push(true)
-		filetransfer.SendFile(fileName)
+		filetransfer.SendFile(fileName, dirPath)
 	}
 }
