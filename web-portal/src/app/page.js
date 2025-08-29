@@ -21,6 +21,8 @@ export default function App() {
   const [serverIp, setServerIp] = useState("http://192.168.x.x:5000");
   // State to manage the dropzone border color based on job status
   const [dropzoneBorderClass, setDropzoneBorderClass] = useState('border-zinc-800');
+  // New state to hold the URL of the rendered image
+  const [downloadUrl, setDownloadUrl] = useState('');
 
 
   // Reference to the hidden file input element
@@ -128,6 +130,8 @@ export default function App() {
               setProgress(100);
               setJobStatus("success");
               setStatusMessage("Rendering completed!");
+              // Construct the download URL and save it to state
+              setDownloadUrl(`${serverIp}/download?file=${renderFileName}`);
               break; // Exit the loop
             } else if (statusText.includes("failed")) {
               setErrorMessage("Rendering failed on the server.");
@@ -235,9 +239,22 @@ export default function App() {
             <p className="text-4xl mb-4">✅</p>
             <p className="text-lg font-bold">Rendering Completed!</p>
             <p className="text-sm text-gray-400">Your file &quot;{file?.name}&quot; has been rendered successfully.</p>
+            {downloadUrl && (
+              <a 
+                href={downloadUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-green-700 text-white mt-4 font-bold py-2 px-6 rounded-full shadow-lg hover:bg-green-600 transition-colors border-2 border-green-600 inline-block mr-2"
+              >
+                View Render
+              </a>
+            )}
             <button
-              onClick={() => setJobStatus('idle')}
-              className="bg-zinc-700 text-white mt-4 font-bold py-2 px-6 rounded-full shadow-lg hover:bg-zinc-800 transition-colors border-2 border-zinc-600"
+              onClick={() => {
+                setJobStatus('idle');
+                setDownloadUrl(''); // Clear the URL when resetting
+              }}
+              className="bg-zinc-700 text-white mt-4 font-bold py-2 px-6 rounded-full shadow-lg hover:bg-zinc-800 transition-colors border-2 border-zinc-600 inline-block"
             >
               Upload Another
             </button>
