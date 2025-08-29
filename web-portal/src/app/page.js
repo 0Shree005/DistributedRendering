@@ -15,6 +15,8 @@ export default function App() {
   const [progress, setProgress] = useState(0);
   // State for displaying error messages
   const [errorMessage, setErrorMessage] = useState('');
+  // State for adding local ip of the server
+  const [serverIp, setServerIp] = useState("http://localhost:8080");
 
   // Reference to the hidden file input element
   const fileInputRef = useRef(null);
@@ -52,28 +54,50 @@ export default function App() {
   };
 
   // Simulates a file upload with a progress bar. Replace this with your actual API call.
-  const uploadFile = () => {
+  const uploadFile = async () => {
     if (!file) {
-      setErrorMessage('No file selected to upload.');
-      setUploadStatus('error');
+      setErrorMessage("No file selected to upload.");
+      setUploadStatus("error");
       return;
     }
 
-    setUploadStatus('uploading');
-    setProgress(0);
+    if (!serverIp) {
+      setErrorMessage("Please provide your server's IP address.");
+      setUploadStatus("error");
+      return;
+    }
 
-    // Mock progress over 3 seconds
-    const interval = setInterval(() => {
-      setProgress((prevProgress) => {
-        if (prevProgress >= 100) {
-          clearInterval(interval);
-          setUploadStatus('success');
-          return 100;
-        }
-        return prevProgress + 10;
+    try {
+      setUploadStatus("uploading");
+      setProgress(0);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(`${serverIp}/upload`, {
+        method: "POST",
+        body: formData,
       });
-    }, 300);
 
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      // Simulate progress visually (optional)
+      let p = 0;
+      const interval = setInterval(() => {
+        p += 20;
+        setProgress(p);
+        if (p >= 100) {
+          clearInterval(interval);
+          setUploadStatus("success");
+        }
+      }, 200);
+
+    } catch (err) {
+      setErrorMessage(err.message || "Upload failed.");
+      setUploadStatus("error");
+    }
   };
 
   // Event handler for drag-and-drop events (prevents default behavior)
@@ -182,11 +206,20 @@ export default function App() {
         </h1>
 
         {/* The main drop zone area */}
+        <h2>Please enter your server&apos;s local ip</h2>
+        <input
+          type="text"
+          value={serverIp}
+          onChange={(e) => setServerIp(e.target.value)}
+          placeholder="192.168.x.x:8080"
+          className="w-full mb-4 p-2 rounded bg-gray-700 text-gray-100"
+        />
+
         <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          onClick={() => fileInputRef.current.click()}
+          onClick={() => fileInputRef.current?.click()}
           className={`
             flex flex-col items-center justify-center p-8 text-center
             border-4 border-dashed rounded-2xl cursor-pointer transition-colors duration-200
