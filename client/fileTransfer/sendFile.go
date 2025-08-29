@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/0Shree005/DistributedRendering/client/fileReceive"
 	"github.com/joho/godotenv"
 )
 
@@ -87,7 +88,8 @@ func SendFile(fileName string, dirPath string) {
 		fmt.Println("Server status:", status)
 
 		if contains(status, "done") {
-			fmt.Println("✅ Rendering completed!")
+			fmt.Println("✅ Rendering completed! Downloading the rendered image from server...")
+			fileReceive.ReceiveFile(fileName, dirPath, server)
 			break
 		}
 		if contains(status, "failed") {

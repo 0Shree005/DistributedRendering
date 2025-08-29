@@ -35,6 +35,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/upload", handlers.UploadHandler)
 	mux.HandleFunc("/status", handlers.StatusHandler)
+	mux.HandleFunc("/download", handlers.DownloadHandler)
 
 	handler := cors.AllowAll().Handler(mux)
 	http.ListenAndServe(ip+":5000", handler)
