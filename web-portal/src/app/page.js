@@ -9,31 +9,33 @@ export default function App() {
   const [isDragging, setIsDragging] = useState(false);
   // State to store the selected file
   const [file, setFile] = useState(null);
-  // State to track the upload status: 'idle', 'uploading', 'success', 'error'
-  const [uploadStatus, setUploadStatus] = useState('idle');
-  // State for the upload progress percentage
+  // State to track the overall job status
+  const [jobStatus, setJobStatus] = useState('idle');
+  // State to track the render progress percentage
   const [progress, setProgress] = useState(0);
+  // State for displaying a specific status message to the user
+  const [statusMessage, setStatusMessage] = useState(''); // New state for custom messages
   // State for displaying error messages
   const [errorMessage, setErrorMessage] = useState('');
   // State for adding local ip of the server
   const [serverIp, setServerIp] = useState("http://192.168.x.x:5000");
-  // State to manage the dropzone border color based on upload status
+  // State to manage the dropzone border color based on job status
   const [dropzoneBorderClass, setDropzoneBorderClass] = useState('border-zinc-800');
 
 
   // Reference to the hidden file input element
   const fileInputRef = useRef(null);
 
-  // Effect to update dropzone border class when uploadStatus changes
+  // Effect to update dropzone border class when jobStatus changes
   useEffect(() => {
-    if (uploadStatus === 'success') {
+    if (jobStatus === 'success') {
       setDropzoneBorderClass('border-green-500');
-    } else if (uploadStatus === 'error') {
+    } else if (jobStatus === 'error') {
       setDropzoneBorderClass('border-red-500');
     } else {
       setDropzoneBorderClass('border-zinc-800');
     }
-  }, [uploadStatus]);
+  }, [jobStatus]);
 
   // Simple SVG for the cloud icon to avoid external libraries
   const CloudUploadIcon = () => (
@@ -55,62 +57,104 @@ export default function App() {
     // Check for file type
     if (!uploadedFile.name.endsWith('.blend')) {
       setErrorMessage('Invalid file type. Please upload a .blend file.');
+      setJobStatus('error');
       setFile(null);
-      setUploadStatus('error');
       return;
     }
 
     // Reset state and set the file
     setErrorMessage('');
     setFile(uploadedFile);
-    setUploadStatus('idle');
+    setJobStatus('idle');
     setProgress(0);
   };
 
-  // Simulates a file upload with a progress bar. Replace this with your actual API call.
+  // The main function to handle file upload and rendering
   const uploadFile = async () => {
     if (!file) {
       setErrorMessage("No file selected to upload.");
-      setUploadStatus("error");
+      setJobStatus("error");
       return;
     }
 
     if (!serverIp) {
       setErrorMessage("Please provide your server's IP address.");
-      setUploadStatus("error");
+      setJobStatus("error");
       return;
     }
 
     try {
-      setUploadStatus("uploading");
-      setProgress(0);
+      setJobStatus("uploading");
+      setStatusMessage("Uploading file...");
+      setProgress(0); // Reset progress
 
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch(`${serverIp}/upload`, {
-        method: "POST",
-        body: formData,
-      });
+      // Fetch API with upload progress
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${serverIp}/upload`, true);
 
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-
-      // Simulate progress visually (optional)
-      let p = 0;
-      const interval = setInterval(() => {
-        p += 20;
-        setProgress(p);
-        if (p >= 100) {
-          clearInterval(interval);
-          setUploadStatus("success");
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          setProgress(percent);
+          setStatusMessage(`Uploading: ${percent}%`);
         }
-      }, 200);
+      };
+
+      xhr.onloadend = async () => {
+        if (xhr.status === 200) {
+          // Upload is complete, now start polling for render status
+          setJobStatus("rendering");
+          setStatusMessage("File uploaded. Rendering started...");
+          setProgress(0);
+
+          const renderFileName = file.name.replace('.blend', '_render0001.png');
+
+          while (true) {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Poll every 1 seconds
+
+            const statusResponse = await fetch(`${serverIp}/status?file=${file.name}`);
+            const statusText = await statusResponse.text();
+
+            console.log('Server status:', statusText);
+
+            // shows a progress bar for rendering.
+            if (statusText.includes("in-progress")) {
+              setProgress(currentProgress => Math.min(currentProgress + 10, 99));
+              setStatusMessage("Rendering in progress...");
+            } else if (statusText.includes("done")) {
+              setProgress(100);
+              setJobStatus("success");
+              setStatusMessage("Rendering completed!");
+              break; // Exit the loop
+            } else if (statusText.includes("failed")) {
+              setErrorMessage("Rendering failed on the server.");
+              setJobStatus("error");
+              break; // Exit the loop
+            } else {
+              setErrorMessage("An unexpected error occurred on the server.");
+              setJobStatus("error");
+              break;
+            }
+          }
+        } else {
+          setErrorMessage(xhr.responseText || "Upload failed.");
+          setJobStatus("error");
+        }
+      };
+
+      xhr.onerror = () => {
+        setErrorMessage("Upload failed due to a network error.");
+        setJobStatus("error");
+      };
+
+      xhr.send(formData);
 
     } catch (err) {
       setErrorMessage(err.message || "Upload failed.");
-      setUploadStatus("error");
+      setJobStatus("error");
     }
   };
 
@@ -132,10 +176,10 @@ export default function App() {
     handleDragEvents(e);
     setIsDragging(false);
     // Reset to default border if no specific status
-    if (uploadStatus === 'idle') {
+    if (jobStatus === 'idle') {
       setDropzoneBorderClass('border-zinc-800');
     }
-  }, [handleDragEvents, uploadStatus]);
+  }, [handleDragEvents, jobStatus]);
 
   // Handler for when a file is dropped
   const handleDrop = useCallback((e) => {
@@ -149,7 +193,7 @@ export default function App() {
 
   // Renders the main UI based on the current state
   const renderContent = () => {
-    switch (uploadStatus) {
+    switch (jobStatus) {
       case 'idle':
         return (
           <>
@@ -172,9 +216,10 @@ export default function App() {
           </>
         );
       case 'uploading':
+      case 'rendering':
         return (
           <div className="w-full text-center">
-            <p className="text-lg font-bold text-gray-100 mb-4">Uploading: {file?.name}</p>
+            <p className="text-lg font-bold text-gray-100 mb-4">{statusMessage}</p>
             <div className="w-full bg-zinc-800 rounded-full h-2.5 overflow-hidden">
               <div
                 className="bg-amber-300 h-2.5 rounded-full transition-all duration-300 ease-in-out shadow-inner"
@@ -188,10 +233,10 @@ export default function App() {
         return (
           <div className="text-center text-green-500">
             <p className="text-4xl mb-4">✅</p>
-            <p className="text-lg font-bold">Upload Successful!</p>
-            <p className="text-sm text-gray-400">Your file &quot;{file?.name}&quot; is now rendering.</p>
+            <p className="text-lg font-bold">Rendering Completed!</p>
+            <p className="text-sm text-gray-400">Your file &quot;{file?.name}&quot; has been rendered successfully.</p>
             <button
-              onClick={() => setUploadStatus('idle')}
+              onClick={() => setJobStatus('idle')}
               className="bg-zinc-700 text-white mt-4 font-bold py-2 px-6 rounded-full shadow-lg hover:bg-zinc-800 transition-colors border-2 border-zinc-600"
             >
               Upload Another
@@ -202,10 +247,10 @@ export default function App() {
         return (
           <div className="text-center text-red-400">
             <p className="text-4xl mb-4">❌</p>
-            <p className="text-lg font-bold">Upload Failed</p>
+            <p className="text-lg font-bold">Job Failed</p>
             <p className="text-sm text-gray-400">{errorMessage}</p>
             <button
-              onClick={() => setUploadStatus('idle')}
+              onClick={() => setJobStatus('idle')}
               className="bg-red-700 text-white mt-4 font-bold py-2 px-6 rounded-full shadow-lg hover:bg-red-600 transition-colors border-2 border-red-600"
             >
               Try Again
@@ -255,7 +300,7 @@ export default function App() {
         </div>
 
         {/* Display file name and upload button if a file is selected */}
-        {file && uploadStatus === 'idle' && (
+        {file && jobStatus === 'idle' && (
           <div className="mt-6 p-4 bg-zinc-800 rounded-lg flex flex-col sm:flex-row items-center justify-between shadow-lg border border-zinc-700">
             <span className="text-gray-300 font-medium truncate mb-2 sm:mb-0 sm:mr-4">
               File: {file.name}
