@@ -23,6 +23,8 @@ export default function App() {
   const [dropzoneBorderClass, setDropzoneBorderClass] = useState('border-zinc-800');
   // New state to hold the URL of the rendered image
   const [downloadUrl, setDownloadUrl] = useState('');
+  // New state to store the remaining time
+  const [remainingTime, setRemainingTime] = useState('');
 
 
   // Reference to the hidden file input element
@@ -69,6 +71,7 @@ export default function App() {
     setFile(uploadedFile);
     setJobStatus('idle');
     setProgress(0);
+    setRemainingTime('');
   };
 
   // The main function to handle file upload and rendering
@@ -129,9 +132,10 @@ export default function App() {
 
             console.log('Server status:', jobStatusData);
 
-            // Now we use the actual progress from the JSON object!
+            // Now we use the actual progress and remaining time from the JSON object!
             if (jobStatusData.status === "in-progress") {
               setProgress(jobStatusData.progress);
+              setRemainingTime(jobStatusData.remainingTime);
               setStatusMessage(`Rendering in progress: ${jobStatusData.progress}%`);
             } else if (jobStatusData.status === "done") {
               setProgress(100);
@@ -236,7 +240,10 @@ export default function App() {
                 style={{ width: `${progress}%` }}
               ></div>
             </div>
-            <p className="text-xs text-gray-400 mt-2">{progress}% Complete</p>
+            <p className="text-xs text-gray-400 mt-2">
+              {progress}% Complete
+              {remainingTime && ` - Remaining: ${remainingTime}`}
+            </p>
           </div>
         );
       case 'success':
@@ -259,6 +266,7 @@ export default function App() {
               onClick={() => {
                 setJobStatus('idle');
                 setDownloadUrl(''); // Clear the URL when resetting
+                setRemainingTime('');
               }}
               className="bg-zinc-700 text-white mt-4 font-bold py-2 px-6 rounded-full shadow-lg hover:bg-zinc-800 transition-colors border-2 border-zinc-600 inline-block"
             >

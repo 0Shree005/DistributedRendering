@@ -36,16 +36,16 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("File %s received successfully!\n", header.Filename)
 		w.Write([]byte("File uploaded. Rendering started.\n"))
 
-		// Mark as in-progress with 0% progress
-		renderJobs.Store(header.Filename, &types.JobStatus{Status: "in-progress", Progress: 0})
+		// Mark as in-progress with 0% progress and no remaining time
+		renderJobs.Store(header.Filename, &types.JobStatus{Status: "in-progress", Progress: 0, RemainingTime: ""})
 
 		// Run Blender async
 		go func(fname string) {
 			err := scripts.StartRendering(fname, &renderJobs)
 			if err != nil {
-				renderJobs.Store(fname, &types.JobStatus{Status: "failed", Progress: 0})
+				renderJobs.Store(fname, &types.JobStatus{Status: "failed", Progress: 0, RemainingTime: ""})
 			} else {
-				renderJobs.Store(fname, &types.JobStatus{Status: "done", Progress: 100})
+				renderJobs.Store(fname, &types.JobStatus{Status: "done", Progress: 100, RemainingTime: "00:00.00"})
 			}
 		}(header.Filename)
 
