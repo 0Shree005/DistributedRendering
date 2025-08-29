@@ -2,6 +2,7 @@ package filetransfer
 
 import (
 	"bytes"
+	"encoding/json" // New import for JSON handling
 	"fmt"
 	"io"
 	"log"
@@ -17,8 +18,14 @@ import (
 const (
 	maxRetries    = 5
 	retryDelay    = time.Millisecond * 100
-	statusPollInt = 5 * time.Second
+	statusPollInt = 1 * time.Second
 )
+
+// JobStatus is a local representation of the server's status struct.
+type JobStatus struct {
+	Status   string `json:"status"`
+	Progress int    `json:"progress"`
+}
 
 func SendFile(fileName string, dirPath string) {
 	var file *os.File
@@ -76,29 +83,42 @@ func SendFile(fileName string, dirPath string) {
 	// --- Polling status ---
 	for {
 		time.Sleep(statusPollInt)
+
 		statusResp, err := http.Get(fmt.Sprintf("%s/status?file=%s", server, fileName))
 		if err != nil {
 			log.Println("Error getting status:", err)
 			continue
 		}
-		statusBody, _ := io.ReadAll(statusResp.Body)
+
+		statusBody, err := io.ReadAll(statusResp.Body)
+		if err != nil {
+			log.Println("Error reading status response body:", err)
+			statusResp.Body.Close()
+			continue
+		}
 		statusResp.Body.Close()
 
-		status := string(statusBody)
-		fmt.Println("Server status:", status)
+		var jobStatus JobStatus
+		if err := json.Unmarshal(statusBody, &jobStatus); err != nil {
+			log.Println("Error parsing status response:", err)
+			// Fallback to old behavior if JSON parsing fails
+			if bytes.Contains(statusBody, []byte("done")) {
+				jobStatus.Status = "done"
+			} else if bytes.Contains(statusBody, []byte("failed")) {
+				jobStatus.Status = "failed"
+			}
+		}
 
-		if contains(status, "done") {
+		fmt.Printf("Server status for %s: %s (progress: %d%%)\n", fileName, jobStatus.Status, jobStatus.Progress)
+
+		if jobStatus.Status == "done" {
 			fmt.Println("✅ Rendering completed! Downloading the rendered image from server...")
 			fileReceive.ReceiveFile(fileName, dirPath, server)
 			break
 		}
-		if contains(status, "failed") {
+		if jobStatus.Status == "failed" {
 			fmt.Println("❌ Rendering failed!")
 			break
 		}
 	}
-}
-
-func contains(s, substr string) bool {
-	return bytes.Contains([]byte(s), []byte(substr))
 }

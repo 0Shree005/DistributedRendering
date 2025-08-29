@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"fmt"
+	"encoding/json"
 	"net/http"
 )
 
@@ -13,7 +13,8 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if val, ok := renderJobs.Load(file); ok {
-		w.Write([]byte(fmt.Sprintf("Status for %s: %s\n", file, val)))
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(val)
 	} else {
 		http.Error(w, "File not found", http.StatusNotFound)
 	}
