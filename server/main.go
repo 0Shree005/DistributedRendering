@@ -37,5 +37,5 @@ func main() {
 	mux.HandleFunc("/status", handlers.StatusHandler)
 
 	handler := cors.AllowAll().Handler(mux)
-	http.ListenAndServe(":8080", handler)
+	http.ListenAndServe(ip+":5000", handler)
 }

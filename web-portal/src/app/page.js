@@ -16,7 +16,7 @@ export default function App() {
   // State for displaying error messages
   const [errorMessage, setErrorMessage] = useState('');
   // State for adding local ip of the server
-  const [serverIp, setServerIp] = useState("http://localhost:8080");
+  const [serverIp, setServerIp] = useState("http://192.168.x.x:5000");
 
   // Reference to the hidden file input element
   const fileInputRef = useRef(null);
