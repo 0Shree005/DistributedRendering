@@ -118,27 +118,33 @@ export default function App() {
             await new Promise(resolve => setTimeout(resolve, 1000)); // Poll every 1 seconds
 
             const statusResponse = await fetch(`${serverIp}/status?file=${file.name}`);
-            const statusText = await statusResponse.text();
 
-            console.log('Server status:', statusText);
+            if (!statusResponse.ok) {
+              setErrorMessage("Failed to get render status from server.");
+              setJobStatus("error");
+              break;
+            }
 
-            // shows a progress bar for rendering.
-            if (statusText.includes("in-progress")) {
-              setProgress(currentProgress => Math.min(currentProgress + 10, 99));
-              setStatusMessage("Rendering in progress...");
-            } else if (statusText.includes("done")) {
+            const jobStatusData = await statusResponse.json();
+
+            console.log('Server status:', jobStatusData);
+
+            // Now we use the actual progress from the JSON object!
+            if (jobStatusData.status === "in-progress") {
+              setProgress(jobStatusData.progress);
+              setStatusMessage(`Rendering in progress: ${jobStatusData.progress}%`);
+            } else if (jobStatusData.status === "done") {
               setProgress(100);
               setJobStatus("success");
               setStatusMessage("Rendering completed!");
-              // Construct the download URL and save it to state
               setDownloadUrl(`${serverIp}/download?file=${renderFileName}`);
               break; // Exit the loop
-            } else if (statusText.includes("failed")) {
+            } else if (jobStatusData.status === "failed") {
               setErrorMessage("Rendering failed on the server.");
               setJobStatus("error");
               break; // Exit the loop
             } else {
-              setErrorMessage("An unexpected error occurred on the server.");
+              setErrorMessage("An unexpected status occurred on the server.");
               setJobStatus("error");
               break;
             }
