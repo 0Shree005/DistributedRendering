@@ -2,15 +2,17 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/0Shree005/DistributedRendering/server/scripts"
 	"io"
 	"net/http"
 	"os"
 	"regexp"
 	"sync"
+
+	"github.com/0Shree005/DistributedRendering/server/scripts"
+	"github.com/0Shree005/DistributedRendering/server/types"
 )
 
-var renderJobs sync.Map // to track status of the file rendering (filename -> status {"inProgress", "done", "failed"})
+var renderJobs sync.Map // to track status of the file rendering (filename -> *types.JobStatus)
 
 func UploadHandler(w http.ResponseWriter, r *http.Request) {
 	file, header, err := r.FormFile("file")
@@ -34,16 +36,16 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("File %s received successfully!\n", header.Filename)
 		w.Write([]byte("File uploaded. Rendering started.\n"))
 
-		// Mark as in-progress
-		renderJobs.Store(header.Filename, "in-progress")
+		// Mark as in-progress with 0% progress and no remaining time
+		renderJobs.Store(header.Filename, &types.JobStatus{Status: "in-progress", Progress: 0, RemainingTime: ""})
 
 		// Run Blender async
 		go func(fname string) {
-			err := scripts.StartRendering(fname)
+			err := scripts.StartRendering(fname, &renderJobs)
 			if err != nil {
-				renderJobs.Store(fname, "failed")
+				renderJobs.Store(fname, &types.JobStatus{Status: "failed", Progress: 0, RemainingTime: ""})
 			} else {
-				renderJobs.Store(fname, "done")
+				renderJobs.Store(fname, &types.JobStatus{Status: "done", Progress: 100, RemainingTime: "00:00.00"})
 			}
 		}(header.Filename)
 
