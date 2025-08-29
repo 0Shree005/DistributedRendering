@@ -50,7 +50,6 @@ func Middle(wg *sync.WaitGroup, ctx context.Context, dirPath string) {
 		for {
 			select {
 			case <-ticker.C:
-				fmt.Println("Tick")
 			case <-initStackIticker.C:
 				initStack(&stack)
 			case <-ctx.Done():

@@ -2,7 +2,7 @@ package filetransfer
 
 import (
 	"bytes"
-	"encoding/json" // New import for JSON handling
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -23,8 +23,9 @@ const (
 
 // JobStatus is a local representation of the server's status struct.
 type JobStatus struct {
-	Status   string `json:"status"`
-	Progress int    `json:"progress"`
+	Status        string `json:"status"`
+	Progress      int    `json:"progress"`
+	RemainingTime string `json:"remainingTime"` // Add this new field
 }
 
 func SendFile(fileName string, dirPath string) {
@@ -109,7 +110,7 @@ func SendFile(fileName string, dirPath string) {
 			}
 		}
 
-		fmt.Printf("Server status for %s: %s (progress: %d%%)\n", fileName, jobStatus.Status, jobStatus.Progress)
+		fmt.Printf("Server status for %s: %s (progress: %d%%, remaining: %s)\n", fileName, jobStatus.Status, jobStatus.Progress, jobStatus.RemainingTime)
 
 		if jobStatus.Status == "done" {
 			fmt.Println("✅ Rendering completed! Downloading the rendered image from server...")
