@@ -25,10 +25,36 @@ export default function App() {
   const [downloadUrl, setDownloadUrl] = useState('');
   // New state to store the remaining time
   const [remainingTime, setRemainingTime] = useState('');
+  // New state for a visually smoother progress bar
+  const [smoothProgress, setSmoothProgress] = useState(0);
 
 
   // Reference to the hidden file input element
   const fileInputRef = useRef(null);
+
+  // Effect to smoothly animate the progress bar
+  useEffect(() => {
+    // If progress changes, start a short animation to the new value
+    const interval = setInterval(() => {
+      setSmoothProgress(currentSmoothProgress => {
+        // Increment the smooth progress by a small amount towards the real progress
+        const diff = progress - currentSmoothProgress;
+        if (diff > 0) {
+          return Math.min(currentSmoothProgress + diff * 0.1, progress);
+        }
+        // If real progress is lower, jump to it immediately
+        return progress;
+      });
+    }, 50); // Update every 50ms for a smooth animation
+
+    // Clear the interval when the component unmounts or progress is complete
+    if (progress >= 100) {
+      clearInterval(interval);
+      setSmoothProgress(100);
+    }
+
+    return () => clearInterval(interval);
+  }, [progress]);
 
   // Effect to update dropzone border class when jobStatus changes
   useEffect(() => {
@@ -114,6 +140,7 @@ export default function App() {
           setJobStatus("rendering");
           setStatusMessage("File uploaded. Rendering started...");
           setProgress(0);
+          setSmoothProgress(0);
 
           const renderFileName = file.name.replace('.blend', '_render0001.png');
 
@@ -237,7 +264,7 @@ export default function App() {
             <div className="w-full bg-zinc-800 rounded-full h-2.5 overflow-hidden">
               <div
                 className="bg-amber-300 h-2.5 rounded-full transition-all duration-300 ease-in-out shadow-inner"
-                style={{ width: `${progress}%` }}
+                style={{ width: `${smoothProgress}%` }}
               ></div>
             </div>
             <p className="text-xs text-gray-400 mt-2">

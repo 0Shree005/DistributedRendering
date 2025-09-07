@@ -25,6 +25,6 @@ else
 fi
 
 
-# Open the rendered image with default image viewer
-echo "Opening rendered image..."
-xdg-open "${outputDir}/${outputFileName}0001.png"
+# # Open the rendered image with default image viewer
+# echo "Opening rendered image..."
+# xdg-open "${outputDir}/${outputFileName}0001.png"
